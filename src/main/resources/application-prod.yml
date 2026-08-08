@@ -1,0 +1,4 @@
+logging:
+  level:
+    com.example.template: WARN
+    root: WARN
