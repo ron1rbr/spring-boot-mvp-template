@@ -1,3 +1,6 @@
+jwt:
+  secret: test-secret-key-for-ci-pipeline-only-not-for-prod-x
+
 logging:
   level:
     com.example.template: INFO

@@ -3,6 +3,9 @@ spring:
     name: spring-boot-mvp-template
   profiles:
     active: dev
-  
+
+jwt:
+  access-token-expiration-minutes: 15
+
 server:
   port: 8080
