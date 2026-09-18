@@ -6,6 +6,7 @@ spring:
 
 jwt:
   access-token-expiration-minutes: 15
+  refresh-token-expiration-days: 30
 
 server:
   port: 8080

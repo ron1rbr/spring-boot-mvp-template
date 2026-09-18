@@ -29,4 +29,7 @@ public class JwtProperties {
   @Positive
   private long accessTokenExpirationMinutes;
 
+  @Positive
+  private long refreshTokenExpirationDays;
+
 }
