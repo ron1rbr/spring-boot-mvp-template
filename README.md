@@ -25,3 +25,13 @@ RFC 7807 error handling, and optional Oauth2 / rate limiting modules.
 Integration tests extend `AbstractIntegrationTest` and spin up their own
 disposable PostgreSQL container via Testcontainers. you do NOT need
 `docker compose up -d` running to run tests. Just: `./mvnw verify`
+
+## Local HTTPS note
+RefreshTokenCookieFactory always sets `Secure` on the refresh cookie,
+even in the `dev` profile. Browsers only honor `Secure` cookies over
+HTTPS, so testing the full login -> refresh flow locally requires either
+running your dev server over HTTPS (e.g. via `mkcert` + a local reverse
+proxy) or a browser flag override for local development. This is
+intentional: an MVP template should not teach the habit of disabling
+`Secure` "just for dev", since that's the kind of flag that quietly
+survives into a staging config.

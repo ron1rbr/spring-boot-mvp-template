@@ -5,6 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,11 +88,30 @@ public class RefreshTokenService {
   }
 
   /**
-   * Revokes every active token for a user, used for an explicit
-   * "log out everywhere" action (wired up when that endpoint exists).
+   * Revokes exacly the token presented, used for "log out this device
+   * only". Deliberately idempotent/silent if the token isn't found or
+   * already revoked: logout should never fail just because the session
+   * was already gone (e.g. double-click, stale tab), and leaking whether
+   * a token existed would be an unnecessary information disclosure.
    */
-  public void revokeAllForUser(User user) {
-    refreshTokenRepository.revokeAllActiveTokensForUser(user.getId(), Instant.now());
+  public void revokeSingle(String rawToken) {
+    refreshTokenRepository.findByTokenHash(hash(rawToken))
+        .filter(token -> !token.isRevoked())
+        .ifPresent(token -> {
+          token.revoke();
+          refreshTokenRepository.save(token);
+        });
+  }
+
+  /**
+   * Revokes every active token for a user, used for an explicit
+   * "log out averywhere" action. Takes a UUID, not a User entity: this
+   * operation never needs to read anything about the user besides their
+   * id, and accepting just the id lets callers (like AuthController's
+   * logoutAllDevices) avoid an unnecessary lookup of the full entity.
+   */
+  public void revokeAllForUser(UUID userId) {
+    refreshTokenRepository.revokeAllActiveTokensForUser(userId, Instant.now());
   }
 
   private String generateRawToken() {
