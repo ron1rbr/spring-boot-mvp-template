@@ -79,7 +79,7 @@ class RefreshTokenServiceIntegrationTest extends AbstractIntegrationTest {
     User user = persistUser("revokeall@example.com");
     String token = refreshTokenService.issue(user);
 
-    refreshTokenService.revokeAllForUser(user);
+    refreshTokenService.revokeAllForUser(user.getId());
 
     assertThrows(InvalidRefreshTokenException.class, () -> refreshTokenService.rotate(token));
 

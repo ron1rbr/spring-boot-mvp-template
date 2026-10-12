@@ -18,8 +18,13 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
    * rather than loading each row into memory to call revoke() + save().
    * Used when reuse is detected: the entire family must die at once, and
    * this must be fast and atomic since it's the incident-response path.
+   *
+   * flushAutomatically: flushes pending changes from the persistence context
+   * before the bulk UPDATE, so the query can see the latest state.
+   * clearAutomatically: a bulk UPDATE bypasses Hibernate, so already-loaded
+   * entities would have an outdated revokedAt value in memory.
    */
-  @Modifying
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query("""
         UPDATE RefreshToken t
         SET t.revokedAt = :now

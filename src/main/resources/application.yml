@@ -4,6 +4,10 @@ spring:
   profiles:
     active: dev
 
+app:
+  password-reset:
+    expiration-minutes: 30
+
 jwt:
   access-token-expiration-minutes: 15
   refresh-token-expiration-days: 30

@@ -1,18 +1,17 @@
 package com.example.template.auth;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.template.auth.exception.InvalidRefreshTokenException;
 import com.example.template.auth.exception.RefreshTokenReuseException;
+import com.example.template.common.security.OpaqueTokenGenerator;
 import com.example.template.user.User;
 
 import lombok.RequiredArgsConstructor;
@@ -22,41 +21,32 @@ import lombok.RequiredArgsConstructor;
 public class RefreshTokenService {
 
   private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
-  private static final int TOKEN_BYTE_LENGTH = 32; // 256 bits of entropy
 
   private final RefreshTokenRepository refreshTokenRepository;
   private final JwtProperties jwtProperties;
-  private final SecureRandom secureRandom = new SecureRandom();
+  private final OpaqueTokenGenerator tokenGenerator;
 
-  /**
-   * Issues a brand new token chain for a user, called on login/register,
-   * never as part of rotation (rotate() creates its own follow-up token).
-   */
+  @Transactional
   public String issue(User user) {
-    String rawToken = generateRawToken();
-    Instant expiresAt = Instant.now().plus(jwtProperties.getRefreshTokenExpirationDays(),
-        java.time.temporal.ChronoUnit.DAYS);
+    String rawToken = tokenGenerator.generateRawToken();
+    Instant expiresAt = Instant.now().plus(jwtProperties.getRefreshTokenExpirationDays(), ChronoUnit.DAYS);
 
-    RefreshToken token = RefreshToken.issue(user, hash(rawToken), expiresAt);
+    RefreshToken token = RefreshToken.issue(user, tokenGenerator.hash(rawToken), expiresAt);
     refreshTokenRepository.save(token);
 
     return rawToken;
   }
 
   /**
-   * Validates a presented refresh token and, if valid, atomically retires
-   * it and issues its replacement. Returns the new raw token plus the
-   * associated user, so the caller can also mint a fresh access token.
-   *
-   * Reuse detection: if the token is found but was already rotated
-   * once before, presenting it again can only happen if it leaked and
-   * is being used by two parties at once. The entire family is revoked
-   * immediately; the legitimate owner will simply be asked to log in
-   * again, which is an acceptable cost for shutting down a compromised
-   * session immediately.
+   * noRollbackFor is essential, not decorative: in the reuse path, this method
+   * REVOKES the entire token family and THEN throws the exception. Without it,
+   * the default rollback behavior for RuntimeException would undo the revocation
+   * that just occurred, turning theft detection into a warning with no actual
+   * effect.
    */
+  @Transactional(noRollbackFor = RefreshTokenReuseException.class)
   public RotationResult rotate(String rawToken) {
-    String presentedHash = hash(rawToken);
+    String presentedHash = tokenGenerator.hash(rawToken);
 
     RefreshToken existing = refreshTokenRepository.findByTokenHash(presentedHash)
         .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token not recognized"));
@@ -73,10 +63,9 @@ public class RefreshTokenService {
     }
 
     User user = existing.getUser();
-    String newRawToken = generateRawToken();
-    String newHash = hash(newRawToken);
-    Instant newExpiresAt = Instant.now().plus(jwtProperties.getRefreshTokenExpirationDays(),
-        java.time.temporal.ChronoUnit.DAYS);
+    String newRawToken = tokenGenerator.generateRawToken();
+    String newHash = tokenGenerator.hash(newRawToken);
+    Instant newExpiresAt = Instant.now().plus(jwtProperties.getRefreshTokenExpirationDays(), ChronoUnit.DAYS);
 
     existing.markReplacedBy(newHash);
     refreshTokenRepository.save(existing);
@@ -87,15 +76,9 @@ public class RefreshTokenService {
     return new RotationResult(newRawToken, user);
   }
 
-  /**
-   * Revokes exacly the token presented, used for "log out this device
-   * only". Deliberately idempotent/silent if the token isn't found or
-   * already revoked: logout should never fail just because the session
-   * was already gone (e.g. double-click, stale tab), and leaking whether
-   * a token existed would be an unnecessary information disclosure.
-   */
+  @Transactional
   public void revokeSingle(String rawToken) {
-    refreshTokenRepository.findByTokenHash(hash(rawToken))
+    refreshTokenRepository.findByTokenHash(tokenGenerator.hash(rawToken))
         .filter(token -> !token.isRevoked())
         .ifPresent(token -> {
           token.revoke();
@@ -103,32 +86,9 @@ public class RefreshTokenService {
         });
   }
 
-  /**
-   * Revokes every active token for a user, used for an explicit
-   * "log out averywhere" action. Takes a UUID, not a User entity: this
-   * operation never needs to read anything about the user besides their
-   * id, and accepting just the id lets callers (like AuthController's
-   * logoutAllDevices) avoid an unnecessary lookup of the full entity.
-   */
+  @Transactional
   public void revokeAllForUser(UUID userId) {
     refreshTokenRepository.revokeAllActiveTokensForUser(userId, Instant.now());
-  }
-
-  private String generateRawToken() {
-    byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
-    secureRandom.nextBytes(bytes);
-    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-  }
-
-  private String hash(String rawToken) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashBytes = digest.digest(rawToken.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-      return java.util.HexFormat.of().formatHex(hashBytes);
-    } catch (NoSuchAlgorithmException e) {
-      // SHA-256 is guaranteed available on every JVM, this branch is unreachable.
-      throw new IllegalStateException("SHA-256 algorithm unavailable", e);
-    }
   }
 
   public record RotationResult(String rawToken, User user) {

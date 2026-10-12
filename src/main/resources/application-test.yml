@@ -2,6 +2,8 @@ app:
   cors:
     allowed-origins:
       - http:localhost:3000
+  password-reset:
+    reset-url-base: http://localhost:3000/reset-password
 
 jwt:
   secret: test-secret-key-for-ci-pipeline-only-not-for-prod-x

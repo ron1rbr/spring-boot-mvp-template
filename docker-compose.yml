@@ -16,5 +16,12 @@ services:
       timeout: 5s
       retries: 5
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: template-mailhog
+    ports:
+      - "1025:1025" # SMTP - the app sends here in dev
+      - "8025:8025" # Web UI - open in a browser to read "sent" emails
+
 volumes:
   template-postgres-data:

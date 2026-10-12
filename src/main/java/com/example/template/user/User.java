@@ -71,4 +71,16 @@ public class User {
     user.role = UserRole.USER;
     return user;
   }
+
+  /**
+   * Explicit, intention-revealing entry point for changing the password
+   * hash. Lombok's @Setter technically already generates setPasswordHash(),
+   * but calling that directly from a service reads as "just setting a
+   * field"; this method name makes the security-sensitive intent
+   * explicit at every call site.
+   */
+  public void changePassword(String newPasswordHash) {
+    this.passwordHash = newPasswordHash;
+  }
+
 }
