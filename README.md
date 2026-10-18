@@ -22,16 +22,34 @@ RFC 7807 error handling, and optional Oauth2 / rate limiting modules.
 
 ## Running tests
 
-Integration tests extend `AbstractIntegrationTest` and spin up their own
-disposable PostgreSQL container via Testcontainers. you do NOT need
-`docker compose up -d` running to run tests. Just: `./mvnw verify`
+Integration tests extend `AbstractIntegrationTest`. The whole test run shares
+one disposable PostgreSQL container (Testcontainers), started when the first
+test class loads and removed when the JVM exits. All tables except Flyway's
+history are truncated before every test, so tests must create their own data
+and must not depend on data left by other tests.
 
-## Local HTTPS note
-RefreshTokenCookieFactory always sets `Secure` on the refresh cookie,
-even in the `dev` profile. Browsers only honor `Secure` cookies over
-HTTPS, so testing the full login -> refresh flow locally requires either
-running your dev server over HTTPS (e.g. via `mkcert` + a local reverse
-proxy) or a browser flag override for local development. This is
-intentional: an MVP template should not teach the habit of disabling
-`Secure` "just for dev", since that's the kind of flag that quietly
-survives into a staging config.
+You do NOT need `docker compose up` running; just Docker: `./mvnw verify`.
+
+## Local development and the Secure refresh cookie
+
+`RefreshTokenCookieFactory` sets `Secure` on the refresh cookie in every
+profile, on purpose: a template shouldn't teach turning it off "just for
+dev", because that flag tends to survive into staging.
+
+This still works on plain `http://localhost`:
+
+- Chrome and Firefox treat `localhost` as a secure context and accept
+  `Secure` cookies from it. Swagger UI (`/swagger-ui.html`) is same-origin
+  with the API, so login -> refresh works there.
+- A frontend on another localhost port (e.g. Vite on `:5173`) is
+  *same-site* with the API on `:8080`, since SameSite ignores ports. This
+  means `SameSite=Strict` doesn't block the cookie. Cross-origin calls
+  still need `credentials: 'include'` on the frontend and its origin listed
+  in `app.cors.allowed-origins`.
+
+Where it does NOT work, and you need HTTPS (e.g. `mkcert` plus a local
+reverse proxy):
+
+- Safari, which doesn't make that exception for `localhost`.
+- Any other hostname over plain HTTP: a LAN IP for testing on a phone,
+  a custom `myapp.local`, a dev container exposed under another name.

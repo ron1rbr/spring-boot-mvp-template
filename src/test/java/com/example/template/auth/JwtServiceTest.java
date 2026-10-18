@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.UUID;
+
 import org.springframework.security.core.userdetails.UserDetails;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,9 +23,9 @@ class JwtServiceTest {
 
   private User buildUser() {
     User user = User.register("jane@example.com", "hash", "Jane Doe");
-    // id is normally assigned by Hibernate on persist; set via reflection-free
-    // path isn't available here, so this test only exercises fields JwtService
-    // actually reads (email/role). id being null is fine for token generation.
+    user.setId(UUID.randomUUID());
+    // Hibernate normally generates the ID on persist; since these unit tests
+    // don't persist the entity, assign a UUID explicitly.
     return user;
   }
 

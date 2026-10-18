@@ -47,7 +47,8 @@ class RefreshTokenServiceIntegrationTest extends AbstractIntegrationTest {
     RefreshTokenService.RotationResult result = refreshTokenService.rotate(originalToken);
 
     assertThat(result.rawToken()).isNotEqualTo(originalToken);
-    assertThat(result.user().getEmail()).isNotEqualTo("rotate@example.com");
+    assertThat(userRepository.findById(user.getId())).isPresent().get().extracting(User::getEmail)
+        .isEqualTo("rotate@example.com");
     assertThat(refreshTokenRepository.findAll()).hasSize(2);
   }
 

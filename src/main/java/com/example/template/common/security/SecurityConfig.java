@@ -56,6 +56,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
                     "/api/auth/password-reset/**")
                 .permitAll()
+                // Docs endpoints are public here, but only EXIST when springdoc is
+                // enabled (see application-prod.yml). Disabling it removes the
+                // endpoints; this matcher never makes a disabled UI reachable.
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())
         .exceptionHandling(ex -> ex.authenticationEntryPoint(restAuthenticationEntryPoint)
             .accessDeniedHandler(restAccessDeniedHandler))

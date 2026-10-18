@@ -12,5 +12,11 @@ jwt:
   access-token-expiration-minutes: 15
   refresh-token-expiration-days: 30
 
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    persist-authorization: true
+  default-produces-media-type: application/json
+
 server:
   port: 8080

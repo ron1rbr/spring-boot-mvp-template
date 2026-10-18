@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -78,4 +80,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     problemDetail.setProperty("timestamp", Instant.now());
     problemDetail.setProperty("path", request.getDescription(false).replace("uri=", ""));
   }
+
+  /**
+   * Security exceptions are NOT translated here. They are rethrown so they
+   * propagate out of Spring MVC and reach ExceptionTranslationFilter, which
+   * delegates to RestAuthenticationEntryPoint (401) or RestAccessDeniedHandler
+   * (403); the single owners of those responses.
+   *
+   * Without this method, the catch-all would swallow them (e.g. an
+   * AccessDeniedException thrown by @PreAuthorize) and answer 500.
+   *
+   * Rethrowing the SAME exception from an @ExceptionHandler is a supported
+   * pattern: Spring skips the "failure in @ExceptionHandler" warning and
+   * continues with default processing.
+   */
+  @ExceptionHandler({ AccessDeniedException.class, AuthenticationException.class })
+  public void rethrowSecurityExceptions(RuntimeException ex) {
+    throw ex;
+  }
+
 }
