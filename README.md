@@ -53,3 +53,21 @@ reverse proxy):
 - Safari, which doesn't make that exception for `localhost`.
 - Any other hostname over plain HTTP: a LAN IP for testing on a phone,
   a custom `myapp.local`, a dev container exposed under another name.
+
+## Health checks and operational endpoints
+
+Point your platform at these (no credentials needed):
+
+- `/actuator/health/liveness`: is the process alive? Never depends on
+  external services, so a database outage can't cause restart loops.
+- `/actuator/health/readiness`: can it serve traffic? Includes the database.
+- `/actuator/health`: aggregate, for platforms that allow a single path.
+
+Details are hidden unless `show-details` is changed (`always` only in dev).
+Every other actuator endpoint (`info`, `metrics`) requires `ROLE_ADMIN`.
+Nothing creates admins through the API; promote one in SQL:
+`UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';`
+
+Endpoints like `env`, `beans` or `heapdump` are not exposed at all; keep
+`management.endpoints.web.exposure.include` an explicit list.
+

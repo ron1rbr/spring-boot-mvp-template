@@ -60,6 +60,13 @@ public class SecurityConfig {
                 // enabled (see application-prod.yml). Disabling it removes the
                 // endpoints; this matcher never makes a disabled UI reachable.
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // Health is the only public actuator surface: platforms probe it
+                // without credentials. Order matters: this must precede the
+                // /actuator/** rule below.
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                // Everything else under /actuator requires ADMIN. Not merely
+                // "authenticated": registration is open, so any visitor can be.
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
         .exceptionHandling(ex -> ex.authenticationEntryPoint(restAuthenticationEntryPoint)
             .accessDeniedHandler(restAccessDeniedHandler))

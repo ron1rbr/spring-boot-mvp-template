@@ -23,6 +23,11 @@ spring:
           starttls:
             enable: false
 
+management:
+  endpoint:
+    health:
+      show-details: always # handy locally; prod keeps the base value (never)
+
 app:
   cors:
     allowed-origins:

@@ -4,6 +4,24 @@ spring:
   profiles:
     active: dev
 
+management:
+  endpoints:
+    web:
+      exposure:
+        # Allowlist, never "*". Adding an endpoint here is a deliberate act.
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true # /health/liveness and /health/readiness outside Kubernetes too
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    mail:
+      enabled: false
+
 app:
   password-reset:
     expiration-minutes: 30
