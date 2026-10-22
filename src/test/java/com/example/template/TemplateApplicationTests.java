@@ -8,8 +8,10 @@ class TemplateApplicationTests extends AbstractIntegrationTest {
 
   @Test
   void contextLoads() {
-    // Fails the build if the Spring context can't start
-    // the cheapest possible smoke test for a scaffold this early.
+    // Fails if the Spring context can't start: bad configuration, a
+    // missing bean, or a Flyway migration that doesn't apply cleanly.
+    // Extends AbstractIntegrationTest so it never depends on a database
+    // running on the developer's machine.
   }
 
 }

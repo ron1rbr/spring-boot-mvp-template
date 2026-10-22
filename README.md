@@ -1,19 +1,16 @@
-# spring-boot-mvp-tamplate
+# spring-boot-mvp-template
 
-Reusable Spring Boot template for bootstrapping new MVPs quickly:
-JWT auth with refresh token rotation, PostgreSQL + Testcontainers,
-RFC 7807 error handling, and optional Oauth2 / rate limiting modules.
+Reusable Spring Boot template for bootstrapping new MVPs quickly: JWT auth
+with refresh token rotation, password reset, PostgreSQL + Testcontainers,
+RFC 7807 error handling, OpenAPI docs and health probes.
 
 ## Getting started
 
 1. Use this repository as a GitHub template.
-2. Find and replace `com.example.template` with your own package.
-3. See `docker-compose.yml` (added in a later commit) to run PostgreSQL locally.
-
-## Core vs optional
-
-- `v1-core` tag: JWT + refresh token auth, error handling, persistence; the essentials.
-- Commits after `v1-core`: Oauth2 login, Bucket4j rate limiting. cherry-pick as needed.
+2. Find and replace `com.example.template` with your own package (and
+the `artifactId` in `pom.xml`).
+3. `docker compose up -d` starts PostgreSQL and Mailhog, a fake SMTP inbox
+at http://localhost:8025.
 
 ## Running locally
 
@@ -70,4 +67,16 @@ Nothing creates admins through the API; promote one in SQL:
 
 Endpoints like `env`, `beans` or `heapdump` are not exposed at all; keep
 `management.endpoints.web.exposure.include` an explicit list.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs `./mvnw verify` on every pull request and on
+pushes to `main`: the same command you run locally. Integration tests start
+their own PostgreSQL via Testcontainers, which works on GitHub-hosted runners
+without extra setup. When a run fails, the Surefire reports are attached to
+it for 7 days.
+
+Recommended: under Settings -> Branches, require the `verify` check before
+merging into `main`. Repositories created from this template inherit the
+workflow and the Dependabot configuration.
 
