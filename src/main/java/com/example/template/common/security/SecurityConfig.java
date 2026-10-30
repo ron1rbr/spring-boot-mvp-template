@@ -2,6 +2,7 @@ package com.example.template.common.security;
 
 import java.util.List;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.example.template.auth.JwtAuthenticationFilter;
 import com.example.template.common.config.CorsProperties;
+import com.example.template.common.ratelimit.RateLimitFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -44,6 +46,7 @@ public class SecurityConfig {
   private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
   private final RestAccessDeniedHandler restAccessDeniedHandler;
   private final CorsProperties corsProperties;
+  private final RateLimitFilter rateLimitFilter;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -70,7 +73,10 @@ public class SecurityConfig {
                 .anyRequest().authenticated())
         .exceptionHandling(ex -> ex.authenticationEntryPoint(restAuthenticationEntryPoint)
             .accessDeniedHandler(restAccessDeniedHandler))
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        // Positioned relative to the JWT filter so it runs strictly before it:
+        // throttle first, then spend CPU and database on authentication.
+        .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class);
 
     return http.build();
   }
@@ -101,6 +107,25 @@ public class SecurityConfig {
   @Bean
   public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
     return config.getAuthenticationManager();
+  }
+
+  /**
+   * Spring Boot registers every Filter bean as a plain servlet filter too,
+   * which would run these filters a second time outside the security chain.
+   * They belong only inside it, so the automatic registration is disabled.
+   */
+  @Bean
+  public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+    FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+    registration.setEnabled(false);
+    return registration;
+  }
+
+  @Bean
+  public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter filter) {
+    FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+    registration.setEnabled(false);
+    return registration;
   }
 
 }

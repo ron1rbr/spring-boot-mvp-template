@@ -1,8 +1,6 @@
 spring:
   application:
     name: spring-boot-mvp-template
-  profiles:
-    active: dev
 
 management:
   endpoints:
@@ -25,6 +23,26 @@ management:
 app:
   password-reset:
     expiration-minutes: 30
+  rate-limit:
+    enabled: true
+    max-tracked-clients: 10000
+    rules:
+      login:
+        paths: [/api/auth/login]
+        capacity: 10
+        window: 1m
+      register:
+        paths: [/api/auth/register]
+        capacity: 5
+        window: 1h
+      password-reset:
+        paths: [/api/auth/password-reset/**]
+        capacity: 5
+        window: 1h
+      session:
+        paths: [/api/auth/refresh, /api/auth/logout]
+        capacity: 30
+        window: 1m
 
 jwt:
   access-token-expiration-minutes: 15
@@ -38,3 +56,6 @@ springdoc:
 
 server:
   port: 8080
+  # Resolve the real client IP from X-Forwarded-For, but only when the
+  # connection comes from a trusted proxy (see README, "Behind a reverse proxy").
+  forward-heades-strategy: native
